@@ -271,7 +271,6 @@ def main():
         print("\n" + "="*70 + "\n")
 
         interface.launch(
-            share=True,
             server_name=server_name,
             server_port=server_port,
             show_error=True,
