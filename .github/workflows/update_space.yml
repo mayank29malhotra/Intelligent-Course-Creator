@@ -22,7 +22,7 @@ jobs:
       run: pip install --upgrade huggingface_hub==0.20.3
 
     - name: Install Gradio
-      run: pip install --upgrade gradio==4.16.0
+      run: pip install --upgrade gradio==4.44.1
 
     - name: Log in to Hugging Face
       env:
