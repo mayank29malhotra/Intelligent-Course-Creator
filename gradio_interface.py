@@ -27,7 +27,7 @@ def main() -> None:
     server_port = int(os.getenv("GRADIO_SERVER_PORT", "7860"))
 
     interface.launch(
-        share=share,
+        share=True,
         server_name=server_name,
         server_port=server_port,
         show_error=True,
