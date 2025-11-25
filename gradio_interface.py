@@ -35,7 +35,6 @@ def main() -> None:
         server_port=server_port,
         show_error=True,
         show_api=False,
-        enable_queue=True,
     )
 
 
