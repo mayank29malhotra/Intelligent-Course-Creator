@@ -20,7 +20,7 @@ def main() -> None:
     app = CourseCreatorApp()
     interface = app.create_interface()
 
-    share = os.getenv("GRADIO_SHARE", "False").lower() == "true"
+    share = os.getenv("GRADIO_SHARE", "True").lower() == "true"
     server_name = os.getenv("GRADIO_SERVER_NAME", "0.0.0.0")
     server_port = int(os.getenv("GRADIO_SERVER_PORT", "7860"))
 
