@@ -1,3 +1,9 @@
+---
+title: Intelligent-Course-Creator
+app_file: app.py
+sdk: gradio
+sdk_version: 6.0.0
+---
 # Intelligent Course Creator
 
 A professional, production-ready multi-agent orchestration system for automatically generating comprehensive, high-quality educational courses using **Google Gemini** with a **Gradio web interface**.

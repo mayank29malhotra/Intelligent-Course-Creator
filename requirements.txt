@@ -2,8 +2,9 @@ requests
 python-dotenv
 google-generativeai
 openai
-gradio
+gradio>=4.0.0
 pydantic
 markdown2
 xhtml2pdf
 python-docx
+beautifulsoup4
