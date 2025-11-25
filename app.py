@@ -431,10 +431,21 @@ def main():
         # Create interface
         interface = app.create_interface()
         
-        # Get configuration
-        share = os.getenv("GRADIO_SHARE", "False").lower() == "true"
-        server_name = os.getenv("GRADIO_SERVER_NAME", "127.0.0.1")
-        server_port = int(os.getenv("GRADIO_SERVER_PORT", "7860"))
+        # Get configuration - Hugging Face Spaces compatible defaults
+        # In HF Spaces, we need to bind to 0.0.0.0 and share must be True
+        is_huggingface_space = os.getenv("SPACE_ID") is not None
+        
+        if is_huggingface_space:
+            # Force HF Spaces compatible settings
+            share = True
+            server_name = "0.0.0.0"
+            server_port = 7860
+            print("🤗 Running in Hugging Face Space environment")
+        else:
+            # Local development settings
+            share = os.getenv("GRADIO_SHARE", "False").lower() == "true"
+            server_name = os.getenv("GRADIO_SERVER_NAME", "127.0.0.1")
+            server_port = int(os.getenv("GRADIO_SERVER_PORT", "7860"))
         
         print(f"✅ Server configuration:")
         print(f"   - Address: {server_name}:{server_port}")

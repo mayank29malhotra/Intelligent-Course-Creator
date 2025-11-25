@@ -105,8 +105,7 @@ class InstructionSection(BaseModel):
     estimated_time: int = Field(description="Time to teach this section in minutes")
     resources: List[str] = Field(default_factory=list, description="External resources or references")
     
-    class Config:
-        extra = "allow"
+    model_config = {"extra": "forbid", "json_schema_extra": {"additionalProperties": False}}
 
 
 class Instruction(BaseModel):
@@ -133,8 +132,7 @@ class PracticeExercise(BaseModel):
     learning_objectives: List[str] = Field(default_factory=list, description="Which objectives this exercise addresses")
     solution_rubric: Optional[str] = Field(default=None, description="Grading rubric or solution outline")
     
-    class Config:
-        extra = "allow"
+    model_config = {"extra": "forbid", "json_schema_extra": {"additionalProperties": False}}
 
 
 class Assessment(BaseModel):
@@ -147,8 +145,7 @@ class Assessment(BaseModel):
     passing_score: int = Field(description="Minimum points to pass")
     questions_count: int = Field(description="Number of questions or items")
     
-    class Config:
-        extra = "allow"
+    model_config = {"extra": "forbid", "json_schema_extra": {"additionalProperties": False}}
 
 
 class Practice(BaseModel):
