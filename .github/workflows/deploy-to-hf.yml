@@ -1,0 +1,34 @@
+name: Deploy to Hugging Face Space
+
+on:
+  push:
+    branches:
+      - main   # or whatever your default branch is
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Mirror to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          SPACE_REPO="https://huggingface.co/spaces/<your-username>/<space-name>.git"
+
+          # Add HF remote (idempotent)
+          if git remote | grep -q hf; then
+            git remote remove hf
+          fi
+          git remote add hf "https://user:${HF_TOKEN}@${SPACE_REPO#https://}"
+
+          # Push current branch to Space main
+          git push hf HEAD:main --force
