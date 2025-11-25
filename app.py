@@ -1,41 +1,50 @@
 """
-Intelligent Course Creator - Hugging Face Spaces App
+Intelligent Course Creator - Hugging Face Spaces App (Patched - Option B)
 
-Main entry point for the Intelligent Course Creator running on Hugging Face Spaces.
-Uses Google Gemini API for course generation with Gradio web interface.
+This file is a Spaces-safe, Gradio 4.x compatible version.
+Fixes applied:
+ - Replaced gr.State with hidden Textbox components to avoid Gradio schema bug
+ - Forces Spaces-friendly server args (server_name=0.0.0.0) and share handling
+ - Disables API schema generation early via gr.set_env
+ - Cleans up callback outputs and launch config
+ - Keeps original behavior otherwise
 
-Environment Variables:
-    GEMINI_API_KEY: Google Gemini API key (required)
-    GOOGLE_API_KEY: Alternative to GEMINI_API_KEY
-    GRADIO_SHARE: Whether to share the link (default: False)
-    QUALITY_THRESHOLD: Default quality threshold (default: 75.0)
-    MAX_ITERATIONS: Maximum refinement iterations (default: 3)
+Environment variables supported:
+ - GEMINI_API_KEY / GOOGLE_API_KEY
+ - GRADIO_SHARE (True/False) default True for Spaces
+ - QUALITY_THRESHOLD (default 75.0)
+ - MAX_ITERATIONS (default 3)
 """
 
-"""Patched app for Hugging Face Spaces - Option B (HuggingFace-Safe Fix)
-* Forces share=True on Spaces
-* Forces server_name=0.0.0.0
-* Removes deprecated / unsupported launch args
-* Tries to minimize Gradio API schema exposure by disabling show_api and using share mode
-"""
-
-import asyncio
-import gradio as gr
-import json
 import os
 from pathlib import Path
 from dotenv import load_dotenv
 
+# Load environment early
 load_dotenv(override=True)
 
-os.environ.setdefault("GRADIO_SERVER_NAME", "0.0.0.0")
-os.environ.setdefault("GRADIO_SHARE", "True")
-os.environ.setdefault("GRADIO_SHOW_API", "False")
+# Important: disable Gradio API generation early to avoid schema conversion attempts
+# (must be set before Blocks / interface creation)
+import gradio as gr
 
+# Use gr.set_env to set environment variables that affect runtime behaviour
+# This reduces chances that Gradio will attempt to generate APIs that break on Spaces
+gr.set_env(GRADIO_SHOW_API="False")
+gr.set_env(GRADIO_ANALYTICS_ENABLED="False")
+
+# Ensure server name default is 0.0.0.0 inside Spaces
+os.environ.setdefault("GRADIO_SERVER_NAME", "0.0.0.0")
+os.environ.setdefault("GRADIO_SHARE", os.getenv("GRADIO_SHARE", "True"))
+
+import json
+import asyncio
+from datetime import datetime
+
+# Local imports (assumed present in repo)
 from coordinator_agent import CourseCreationCoordinator
 from models import CourseCompletion
 from tools.docx_exporter import export_markdown_to_docx
-from datetime import datetime
+
 
 class CourseCreatorApp:
     def __init__(self):
@@ -82,6 +91,7 @@ class CourseCreatorApp:
         quality_threshold: float,
         progress=gr.Progress()
     ) -> tuple[str, str]:
+        # input validation
         if not topic or not topic.strip():
             return "❌ Error: Course topic is required", ""
         if not audience or not audience.strip():
@@ -134,7 +144,6 @@ class CourseCreatorApp:
                 "quality_score": course.quality_assessment.overall_quality_score,
                 "creation_timestamp": course.creation_timestamp
             }
-            course_json = json.dumps(course_data, indent=2)
 
             safe_topic = "".join(c if c.isalnum() or c in " _-" else "" for c in topic)
             safe_topic = safe_topic.lower().replace(" ", "_")[:50]
@@ -181,9 +190,12 @@ class CourseCreatorApp:
                 "3. Try a simpler course topic\n"
                 "4. Reduce course duration\n"
             )
+            # Log exception for debugging
+            print("[create_course] Exception:", str(e))
             return error_msg, ""
 
     def create_interface(self) -> gr.Blocks:
+        # Build the Blocks UI; uses hidden Textbox instead of gr.State to avoid schema issues
         with gr.Blocks(title="Intelligent Course Creator", theme=gr.themes.Soft(), css=""" .header-text { text-align: center; margin: 20px 0; } """) as interface:
             gr.Markdown("# 🎓 Intelligent Course Creator")
             gr.Markdown("""
@@ -214,7 +226,8 @@ instruction materials, practice exercises, and quality validation.
 
             with gr.Group():
                 gr.Markdown("### 📥 Export Course")
-                markdown_output = gr.State(value="")
+                # Hidden textboxes used in place of gr.State
+                markdown_output = gr.Textbox(visible=False, lines=1, value="")
                 with gr.Row():
                     with gr.Column(scale=2):
                         export_status = gr.Textbox(label="Export Status", lines=2, interactive=False, placeholder="Waiting for course generation to finish (4/4)...", show_label=True)
@@ -222,14 +235,18 @@ instruction materials, practice exercises, and quality validation.
                         docx_btn = gr.Button("📘 Download DOCX", variant="secondary", size="lg", visible=False)
                         docx_download = gr.File(label="Download DOCX", visible=False)
 
-            course_title_state = gr.State(value="")
+            course_title_state = gr.Textbox(visible=False, lines=1, value="")
 
+            # Wrapper for creating course (async)
             async def create_course_wrapper(topic, audience, hours, quality):
                 status, markdown = await self.create_course(topic, audience, hours, quality)
                 title = topic or "course"
+                # Show docx button only when markdown exists
                 docx_btn_update = gr.update(visible=bool(markdown and markdown.strip()))
+                # Update hidden markdown and title textboxes
                 return status, markdown, title, docx_btn_update
 
+            # Hook up click: outputs order matches return of wrapper
             create_btn.click(fn=create_course_wrapper, inputs=[topic_input, audience_input, hours_input, quality_input], outputs=[status_output, markdown_output, course_title_state, docx_btn], show_progress=True)
 
             def export_docx_wrapper(markdown_content, course_title):
@@ -237,18 +254,23 @@ instruction materials, practice exercises, and quality validation.
                     return "❌ Please generate a course first", None, gr.update(visible=False)
                 status, docx_path = self.export_to_docx(markdown_content, course_title or "course")
                 if docx_path:
-                    return status, docx_path, gr.update(visible=True, value=docx_path)
+                    # Return status text, file path for download component, and make button visible
+                    return status, str(docx_path), gr.update(visible=True)
                 else:
                     return status, None, gr.update(visible=False)
 
-            docx_btn.click(fn=export_docx_wrapper, inputs=[markdown_output, course_title_state], outputs=[export_status, docx_download, docx_download])
+            # docx_btn triggers export and fills the File component
+            docx_btn.click(fn=export_docx_wrapper, inputs=[markdown_output, course_title_state], outputs=[export_status, docx_download, docx_btn])
 
             def clear_all():
-                return "", "", 5, 75, "", "", "", "", gr.update(visible=False), gr.update(visible=False)
+                # Reset all user-facing inputs and hidden textboxes
+                return "", "", 0.5, 75, "", "", "", "", gr.update(visible=False), gr.update(visible=False)
 
+            # Outputs: topic_input, audience_input, hours_input, quality_input, status_output, markdown_output, course_title_state, export_status, docx_download, docx_btn
             clear_btn.click(fn=clear_all, outputs=[topic_input, audience_input, hours_input, quality_input, status_output, markdown_output, course_title_state, export_status, docx_download, docx_btn])
 
         return interface
+
 
 def main():
     print("\n" + "="*70)
@@ -259,6 +281,7 @@ def main():
         app = CourseCreatorApp()
         interface = app.create_interface()
 
+        # Read config
         share_env = os.getenv("GRADIO_SHARE", "True").lower() == "true"
         server_name = os.getenv("GRADIO_SERVER_NAME", "0.0.0.0")
         server_port = int(os.getenv("GRADIO_SERVER_PORT", "7860"))
@@ -270,10 +293,11 @@ def main():
         print("   - Max Iterations: {}".format(os.getenv('MAX_ITERATIONS', '3')))
         print("\n" + "="*70 + "\n")
 
+        # Launch with explicit args. share must be True on Spaces (or server_name must be 0.0.0.0 and reachable)
         interface.launch(
             server_name=server_name,
             server_port=server_port,
-            show_error=True,
+            share=share_env,
             show_api=False,
             inbrowser=False,
         )
@@ -283,6 +307,7 @@ def main():
     except Exception as e:
         print("\n\n❌ Fatal error: {}".format(str(e)))
         raise
+
 
 if __name__ == "__main__":
     main()

@@ -22,17 +22,16 @@ def main() -> None:
     app = CourseCreatorApp()
     interface = app.create_interface()
 
-    share = os.getenv("GRADIO_SHARE", "True").lower() == "true"
     server_name = os.getenv("GRADIO_SERVER_NAME", "0.0.0.0")
     server_port = int(os.getenv("GRADIO_SERVER_PORT", "7860"))
+    share_env = os.getenv("GRADIO_SHARE", "True").lower() == "true"
 
     interface.launch(
-        server_name=server_name,
-        server_port=server_port,
-        show_error=True,
-        show_api=False,
-        inbrowser=False,
-    )
+   server_name=server_name,
+            server_port=server_port,
+            share=share_env,
+            show_api=False,
+            inbrowser=False,    )
 
 if __name__ == "__main__":
     main()
