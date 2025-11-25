@@ -4,17 +4,47 @@ These models define the structured data formats for each agent in the pipeline.
 All agents now generate Markdown content for easy PDF export.
 """
 
-from pydantic import BaseModel, Field, ConfigDict
-from typing import List, Optional
+from pydantic import BaseModel, Field, ConfigDict, model_serializer
+from typing import List, Optional, Dict, Any
 
-# Global config to prevent Gradio JSON schema issues
+# Global config - use validate_assignment to avoid schema issues
 DEFAULT_MODEL_CONFIG = ConfigDict(
     extra="forbid",
-    json_schema_extra={"additionalProperties": False}
+    # Override schema generation to remove boolean additionalProperties
+    json_schema_mode_override="validation"
 )
 
 
-class CurriculumMarkdown(BaseModel):
+class BaseModelFixed(BaseModel):
+    """Base model with fixed JSON schema generation for Gradio compatibility."""
+    model_config = DEFAULT_MODEL_CONFIG
+    
+    @classmethod
+    def model_json_schema(cls, **kwargs):
+        """Override to remove boolean additionalProperties that break Gradio."""
+        schema = super().model_json_schema(**kwargs)
+        return _remove_additional_properties(schema)
+
+
+def _remove_additional_properties(schema: Dict[str, Any]) -> Dict[str, Any]:
+    """Recursively remove boolean additionalProperties from schema."""
+    if isinstance(schema, dict):
+        # Remove additionalProperties if it's a boolean
+        if "additionalProperties" in schema and isinstance(schema["additionalProperties"], bool):
+            del schema["additionalProperties"]
+        
+        # Process nested schemas
+        for key, value in list(schema.items()):
+            if isinstance(value, dict):
+                schema[key] = _remove_additional_properties(value)
+            elif isinstance(value, list):
+                schema[key] = [_remove_additional_properties(item) if isinstance(item, dict) else item 
+                              for item in value]
+    
+    return schema
+
+
+class CurriculumMarkdown(BaseModelFixed):
     """Curriculum structure with Markdown content."""
     model_config = DEFAULT_MODEL_CONFIG
     
@@ -24,7 +54,7 @@ class CurriculumMarkdown(BaseModel):
     total_duration_hours: float = Field(description="Total estimated course duration")
 
 
-class InstructionMarkdown(BaseModel):
+class InstructionMarkdown(BaseModelFixed):
     """Instruction materials with Markdown content."""
     model_config = DEFAULT_MODEL_CONFIG
     
@@ -33,7 +63,7 @@ class InstructionMarkdown(BaseModel):
     module_title: str = Field(description="Title of the module")
 
 
-class PracticeMarkdown(BaseModel):
+class PracticeMarkdown(BaseModelFixed):
     """Practice materials with Markdown content."""
     model_config = DEFAULT_MODEL_CONFIG
     
@@ -41,7 +71,7 @@ class PracticeMarkdown(BaseModel):
     lesson_title: str = Field(description="Title of the lesson")
 
 
-class QualityAssessment(BaseModel):
+class QualityAssessment(BaseModelFixed):
     """Quality assessment report."""
     model_config = DEFAULT_MODEL_CONFIG
     
@@ -55,7 +85,7 @@ class QualityAssessment(BaseModel):
     recommendations: List[str] = Field(default_factory=list, description="Recommendations for improvement")
 
 
-class CourseCompletion(BaseModel):
+class CourseCompletion(BaseModelFixed):
     """Final compiled course ready for delivery."""
     model_config = DEFAULT_MODEL_CONFIG
     
@@ -72,7 +102,7 @@ class CourseCompletion(BaseModel):
 
 
 # Legacy models kept for backward compatibility but deprecated
-class LearningObjective(BaseModel):
+class LearningObjective(BaseModelFixed):
     """Individual learning objective for a lesson."""
     model_config = DEFAULT_MODEL_CONFIG
     
@@ -83,7 +113,7 @@ class LearningObjective(BaseModel):
     measurable_outcome: str = Field(description="How to measure if the objective was achieved")
 
 
-class Lesson(BaseModel):
+class Lesson(BaseModelFixed):
     """Individual lesson within a module."""
     model_config = DEFAULT_MODEL_CONFIG
     
@@ -94,7 +124,7 @@ class Lesson(BaseModel):
     key_topics: List[str] = Field(description="Main topics covered in this lesson")
 
 
-class Module(BaseModel):
+class Module(BaseModelFixed):
     """A module containing multiple lessons."""
     model_config = DEFAULT_MODEL_CONFIG
     
@@ -106,7 +136,7 @@ class Module(BaseModel):
     lessons: List[Lesson] = Field(description="List of lessons in this module")
 
 
-class Curriculum(BaseModel):
+class Curriculum(BaseModelFixed):
     """Complete curriculum structure designed by the Curriculum Designer Agent."""
     model_config = DEFAULT_MODEL_CONFIG
     
@@ -120,7 +150,7 @@ class Curriculum(BaseModel):
     assessment_strategy: str = Field(description="How student progress will be assessed")
 
 
-class InstructionSection(BaseModel):
+class InstructionSection(BaseModelFixed):
     """Individual instruction section for a lesson."""
     model_config = DEFAULT_MODEL_CONFIG
     
@@ -132,7 +162,7 @@ class InstructionSection(BaseModel):
     resources: List[str] = Field(default_factory=list, description="External resources or references")
 
 
-class Instruction(BaseModel):
+class Instruction(BaseModelFixed):
     """Detailed instruction materials created by the Instruction Designer Agent."""
     model_config = DEFAULT_MODEL_CONFIG
     
@@ -147,7 +177,7 @@ class Instruction(BaseModel):
     teaching_strategies: List[str] = Field(default_factory=list, description="Overall teaching strategies for the lesson")
 
 
-class PracticeExercise(BaseModel):
+class PracticeExercise(BaseModelFixed):
     """Individual practice exercise or assignment."""
     model_config = DEFAULT_MODEL_CONFIG
     
@@ -161,7 +191,7 @@ class PracticeExercise(BaseModel):
     solution_rubric: Optional[str] = Field(default=None, description="Grading rubric or solution outline")
 
 
-class Assessment(BaseModel):
+class Assessment(BaseModelFixed):
     """Assessment or quiz for evaluating student understanding."""
     model_config = DEFAULT_MODEL_CONFIG
     
@@ -174,7 +204,7 @@ class Assessment(BaseModel):
     questions_count: int = Field(description="Number of questions or items")
 
 
-class Practice(BaseModel):
+class Practice(BaseModelFixed):
     """Practice exercises and assessments designed by the Practice Designer Agent."""
     model_config = DEFAULT_MODEL_CONFIG
     
@@ -190,7 +220,7 @@ class Practice(BaseModel):
     remediation_options: List[str] = Field(description="Options for students who need extra help")
 
 
-class QualityIssue(BaseModel):
+class QualityIssue(BaseModelFixed):
     """A quality issue identified during QA review."""
     model_config = DEFAULT_MODEL_CONFIG
     
@@ -201,7 +231,7 @@ class QualityIssue(BaseModel):
     recommendation: str = Field(description="Recommended fix or improvement")
 
 
-class QualityAssurance(BaseModel):
+class QualityAssurance(BaseModelFixed):
     """Quality assurance report produced by the QA Agent."""
     model_config = DEFAULT_MODEL_CONFIG
     
