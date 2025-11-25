@@ -11,8 +11,20 @@ Environment Variables:
     QUALITY_THRESHOLD: Default quality threshold (default: 75.0)
     MAX_ITERATIONS: Maximum refinement iterations (default: 3)
 """
+# File: app.py
+"""
+Patched Intelligent Course Creator - Hugging Face Spaces App
 
-import asyncio 
+Changes made for HF Spaces compatibility and Gradio >=4.44.1:
+- Removed `theme=` and `css=` from gr.Blocks()
+- Injected CSS via gr.HTML
+- Changed gr.State(value=...) to gr.State()
+- Delayed coordinator initialization (lazy init) to avoid startup crashes
+- Default server_name changed to 0.0.0.0 and default share True
+- Robust error handling for coordinator initialization
+"""
+
+import asyncio
 import gradio as gr
 import json
 import os
@@ -30,27 +42,30 @@ from datetime import datetime
 
 class CourseCreatorApp:
     """Main application class for Intelligent Course Creator."""
-    
+
     def __init__(self):
-        """Initialize the course creator app."""
+        """Initialize the course creator app without starting external services."""
+        # Lazy coordinator init to avoid startup crashes on Spaces
         self.coordinator = None
-        self._initialize_coordinator()
-    
+
     def _initialize_coordinator(self):
-        """Initialize the coordinator with environment configuration."""
+        """Initialize the coordinator with environment configuration (safe to call multiple times)."""
+        if self.coordinator is not None:
+            return
         try:
             quality_threshold = float(os.getenv("QUALITY_THRESHOLD", "75.0"))
             max_iterations = int(os.getenv("MAX_ITERATIONS", "3"))
-            
+
             self.coordinator = CourseCreationCoordinator(
                 quality_threshold=quality_threshold,
                 max_iterations=max_iterations
             )
             print("✅ Coordinator initialized successfully")
         except Exception as e:
+            # Don't raise here — just log. Caller should handle None coordinator.
             print(f"❌ Failed to initialize coordinator: {str(e)}")
-            raise
-    
+            self.coordinator = None
+
     def export_to_pdf(self, markdown_content: str, course_title: str) -> tuple[str, str]:
         """Deprecated: PDF export removed in favor of DOCX-only workflow."""
         return "❌ PDF export is no longer supported. Use DOCX export instead.", None
@@ -77,7 +92,7 @@ class CourseCreatorApp:
 
         except Exception as e:
             return f"❌ Error exporting DOCX: {str(e)}", None
-    
+
     async def create_course(
         self,
         topic: str,
@@ -88,23 +103,19 @@ class CourseCreatorApp:
     ) -> tuple[str, str]:
         """
         Create a course asynchronously with professional pipeline progress tracking.
-        
-        Args:
-            topic: Course topic/subject
-            audience: Target audience description
-            hours: Course duration in hours
-            quality_threshold: Minimum quality score (50-100%)
-            progress: Gradio progress tracker
-        
-        Returns:
-            Tuple of (summary_message, json_output)
         """
+        # Ensure coordinator available
+        if self.coordinator is None:
+            self._initialize_coordinator()
+            if self.coordinator is None:
+                return "❌ Error: Coordinator initialization failed. Check logs and API keys.", ""
+
         # Validate inputs
         if not topic or not topic.strip():
             return "❌ Error: Course topic is required", ""
         if not audience or not audience.strip():
             return "❌ Error: Target audience is required", ""
-        
+
         # Handle None or invalid hours (0.5 - 5.0 supported)
         if hours is None:
             return "❌ Error: Course duration is required", ""
@@ -114,7 +125,7 @@ class CourseCreatorApp:
                 return "❌ Error: Course hours must be between 0.5 and 5", ""
         except (ValueError, TypeError):
             return "❌ Error: Course hours must be a valid number", ""
-        
+
         # Handle None or invalid quality threshold
         if quality_threshold is None:
             quality_threshold = 75.0
@@ -124,11 +135,11 @@ class CourseCreatorApp:
                 return "❌ Error: Quality threshold must be between 50 and 100", ""
         except (ValueError, TypeError):
             return "❌ Error: Quality threshold must be a valid number", ""
-        
+
         try:
             # Update quality threshold
             self.coordinator.quality_threshold = quality_threshold
-            
+
             # Initial stage
             progress(0.0, desc="🚀 Initializing course creation (0/4)...")
 
@@ -153,7 +164,7 @@ class CourseCreatorApp:
                 verbose=True,
                 progress_callback=stage_progress_callback
             )
-            
+
             # Generate JSON output (for reference)
             course_data = {
                 "course_id": course.course_id,
@@ -163,19 +174,19 @@ class CourseCreatorApp:
                 "creation_timestamp": course.creation_timestamp
             }
             course_json = json.dumps(course_data, indent=2)
-            
+
             # Save markdown to file
             safe_topic = "".join(c if c.isalnum() or c in " _-" else "" for c in topic)
             safe_topic = safe_topic.lower().replace(" ", "_")[:50]
             md_output_file = f"course_{safe_topic}.md"
-            
+
             try:
                 md_output_path = Path(md_output_file)
                 md_output_path.write_text(course.full_markdown_content)
                 saved_msg = f"📁 Saved to: `{md_output_file}`"
             except Exception as e:
                 saved_msg = f"⚠️ Could not save file: {str(e)}"
-            
+
             # Create detailed summary
             summary = f"""
 ✅ **Course Created Successfully!**
@@ -208,11 +219,11 @@ class CourseCreatorApp:
 
 **All content is in Markdown format and ready for PDF export!**
             """
-            
+
             progress(1.0, desc="🎉 Course generation complete (4/4). Ready to export DOCX.")
-            
+
             return summary, course.full_markdown_content
-        
+
         except Exception as e:
             error_msg = f"""
 ❌ **Error Creating Course:**
@@ -229,44 +240,54 @@ class CourseCreatorApp:
 4. Reduce course duration
             """
             return error_msg, ""
-    
+
     def create_interface(self) -> gr.Blocks:
         """
         Create and return the Gradio interface.
-        
-        Returns:
-            Configured Gradio Blocks interface
         """
         with gr.Blocks(
-            title="Intelligent Course Creator",
-            theme=gr.themes.Soft(),
-            css="""
+            title="Intelligent Course Creator"
+        ) as interface:
+
+            # Apply theme in the supported way (if available); otherwise skip
+            try:
+                theme_obj = gr.themes.Soft()
+                # New API allows applying theme; if not supported it will be ignored
+                try:
+                    gr.Theme.apply(theme_obj)
+                except Exception:
+                    # Older/newer variants may not support Theme.apply — ignore
+                    pass
+            except Exception:
+                pass
+
+            # Inject CSS using HTML (compatible approach)
+            gr.HTML("""
+            <style>
             .header-text {
                 text-align: center;
                 margin: 20px 0;
             }
-            """
-        ) as interface:
-            
+            </style>
+            """)
+
             # Header
-            gr.Markdown(
-                "# 🎓 Intelligent Course Creator"
-            )
+            gr.Markdown("# 🎓 Intelligent Course Creator")
             gr.Markdown(
                 """
                 **Create comprehensive, high-quality courses powered by Google Gemini AI.**
-                
+
                 Simply provide your course topic, target audience, and duration. 
                 The system will automatically generate a complete course structure with curriculum, 
                 instruction materials, practice exercises, and quality validation.
                 """
             )
-            
+
             # Main content
             with gr.Row():
                 with gr.Column(scale=1):
                     gr.Markdown("### 📝 Course Configuration")
-                    
+
                     topic_input = gr.Textbox(
                         label="📚 Course Topic",
                         placeholder="e.g., Python Programming for Beginners",
@@ -274,7 +295,7 @@ class CourseCreatorApp:
                         info="What is the main subject of your course?",
                         scale=1
                     )
-                    
+
                     audience_input = gr.Textbox(
                         label="👥 Target Audience",
                         placeholder="e.g., High school students with no programming experience",
@@ -282,7 +303,7 @@ class CourseCreatorApp:
                         info="Who is this course designed for?",
                         scale=1
                     )
-                    
+
                     hours_input = gr.Number(
                         label="⏱️ Course Duration (hours)",
                         value=0.5,
@@ -292,7 +313,7 @@ class CourseCreatorApp:
                         info="Total hours available for the complete course (1-5)",
                         scale=1
                     )
-                    
+
                     quality_input = gr.Slider(
                         label="✅ Quality Threshold (%)",
                         minimum=50,
@@ -302,7 +323,7 @@ class CourseCreatorApp:
                         info="Minimum acceptable quality score (75% = good balance, 85%+ = very strict)",
                         scale=1
                     )
-                
+
                 with gr.Column(scale=1):
                     gr.Markdown("### 📊 Course Summary")
 
@@ -318,7 +339,7 @@ class CourseCreatorApp:
                         show_copy_button=True,
                         scale=1
                     )
-            
+
             # Buttons
             with gr.Row():
                 with gr.Column(scale=1):
@@ -327,13 +348,13 @@ class CourseCreatorApp:
                         variant="primary",
                         size="lg"
                     )
-                
+
                 with gr.Column(scale=1):
                     clear_btn = gr.Button(
                         "🔄 Clear All",
                         size="lg"
                     )
-            
+
             # DOCX Export Section (no markdown preview)
             with gr.Group():
                 gr.Markdown("### 📥 Export Course")
@@ -342,8 +363,8 @@ class CourseCreatorApp:
                     "as a DOCX file for high-quality printing or PDF export._"
                 )
 
-                # Keep markdown in hidden state for export only
-                markdown_output = gr.State(value="")
+                # Keep markdown in hidden state for export only (use empty state)
+                markdown_output = gr.State()
 
                 with gr.Row():
                     with gr.Column(scale=2):
@@ -365,19 +386,25 @@ class CourseCreatorApp:
                             label="Download DOCX",
                             visible=False
                         )
-        
+
             # Event handlers
-            # Store course title in state
-            course_title_state = gr.State(value="")
-            
+            # Store course title in state (empty State())
+            course_title_state = gr.State()
+
             async def create_course_wrapper(topic, audience, hours, quality):
                 """Wrapper to handle async course creation in Gradio."""
+                # lazy init coordinator (safe if not initialized yet)
+                if self.coordinator is None:
+                    self._initialize_coordinator()
+                    if self.coordinator is None:
+                        return "❌ Coordinator init failed. Check API keys and logs.", "", "", gr.update(visible=False)
+
                 status, markdown = await self.create_course(topic, audience, hours, quality)
                 title = topic or "course"
                 # Show DOCX button only when we have markdown content
                 docx_btn_update = gr.update(visible=bool(markdown and markdown.strip()))
                 return status, markdown, title, docx_btn_update
-            
+
             create_btn.click(
                 fn=create_course_wrapper,
                 inputs=[topic_input, audience_input, hours_input, quality_input],
@@ -392,7 +419,8 @@ class CourseCreatorApp:
                 status, docx_path = self.export_to_docx(markdown_content, course_title or "course")
 
                 if docx_path:
-                    return status, docx_path, gr.update(visible=True, value=docx_path)
+                    # Return path as string for File download component
+                    return status, str(docx_path), gr.update(visible=True, value=str(docx_path))
                 else:
                     return status, None, gr.update(visible=False)
 
@@ -401,57 +429,58 @@ class CourseCreatorApp:
                 inputs=[markdown_output, course_title_state],
                 outputs=[export_status, docx_download, docx_download]
             )
-            
+
             def clear_all():
                 """Clear all inputs and outputs."""
-                return "", "", 5, 75, "", "", "", "", gr.update(visible=False), gr.update(visible=False)
-            
+                return "", "", 0.5, 75, "", None, None, gr.update(visible=False), gr.update(visible=False)
+
             clear_btn.click(
                 fn=clear_all,
-                outputs=[topic_input, audience_input, hours_input, quality_input, 
-                        status_output, markdown_output, course_title_state, export_status, docx_download, docx_btn]
+                outputs=[topic_input, audience_input, hours_input, quality_input,
+                         status_output, markdown_output, course_title_state, export_status, docx_download, docx_btn]
             )
-        
+
         return interface
 
 
 def main():
     """Main entry point for the Hugging Face Spaces application."""
-    
+
     print("\n" + "="*70)
     print("🎓 Intelligent Course Creator")
     print("="*70)
     print("Starting Gradio interface for Hugging Face Spaces...")
     print("="*70 + "\n")
-    
+
     try:
-        # Initialize app
+        # Initialize app object (coordinator lazy-init avoids startup failures)
         app = CourseCreatorApp()
-        
+
         # Create interface
         interface = app.create_interface()
-        
+
         # Get configuration
         share = os.getenv("GRADIO_SHARE", "True").lower() == "true"
-        server_name = os.getenv("GRADIO_SERVER_NAME", "127.0.0.1")
+        server_name = os.getenv("GRADIO_SERVER_NAME", "0.0.0.0")
         server_port = int(os.getenv("GRADIO_SERVER_PORT", "7860"))
-        
+
         print(f"✅ Server configuration:")
         print(f"   - Address: {server_name}:{server_port}")
         print(f"   - Share: {share}")
         print(f"   - Quality Threshold: {os.getenv('QUALITY_THRESHOLD', '75.0')}%")
         print(f"   - Max Iterations: {os.getenv('MAX_ITERATIONS', '3')}")
         print("\n" + "="*70 + "\n")
-        
+
         # Launch Gradio interface
         interface.launch(
             share=share,
             server_name=server_name,
             server_port=server_port,
             show_error=True,
-            show_api=False
+            show_api=False,
+            enable_queue=True,
         )
-    
+
     except KeyboardInterrupt:
         print("\n\n⚠️ Application interrupted by user")
     except Exception as e:
@@ -461,3 +490,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

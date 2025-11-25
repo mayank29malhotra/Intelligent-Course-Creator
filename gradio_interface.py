@@ -3,6 +3,11 @@
 This module simply reuses the main `CourseCreatorApp` UI defined in `app.py`
 so there is a single, professional interface to maintain.
 """
+"""Gradio entrypoint for Intelligent Course Creator (Hugging Face friendly).
+
+This module simply reuses the main `CourseCreatorApp` UI defined in `app.py`
+so there is a single, professional interface to maintain.
+"""
 
 import os
 from dotenv import load_dotenv
@@ -30,6 +35,7 @@ def main() -> None:
         server_port=server_port,
         show_error=True,
         show_api=False,
+        enable_queue=True,
     )
 
 
