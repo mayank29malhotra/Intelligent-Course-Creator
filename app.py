@@ -239,7 +239,7 @@ class CourseCreatorApp:
         """
         with gr.Blocks(
             title="Intelligent Course Creator",
-            # theme=gr.themes.Soft(),
+            theme=gr.themes.Soft(),
             css="""
             .header-text {
                 text-align: center;
