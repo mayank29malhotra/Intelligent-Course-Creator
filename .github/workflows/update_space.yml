@@ -1,4 +1,4 @@
-name: Run Python script
+name: Deploy to Hugging Face
 
 on:
   push:
@@ -18,11 +18,22 @@ jobs:
       with:
         python-version: '3.9'
 
+    # Force install correct HF + Gradio versions BEFORE deploy
+    - name: Install compatible huggingface_hub
+      run: pip install huggingface_hub==0.20.3
+
     - name: Install Gradio
-      run: python -m pip install gradio
+      run: pip install gradio==4.16.0
 
+    # Log in to Hugging Face
     - name: Log in to Hugging Face
-      run: python -c 'import huggingface_hub; huggingface_hub.login(token="${{ secrets.hf_token }}")'
+      env:
+        HF_TOKEN: ${{ secrets.hf_token }}
+      run: python - <<EOF
+from huggingface_hub import login
+login(token="${HF_TOKEN}")
+EOF
 
+    # Deploy
     - name: Deploy to Spaces
       run: gradio deploy
