@@ -4,12 +4,20 @@ These models define the structured data formats for each agent in the pipeline.
 All agents now generate Markdown content for easy PDF export.
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
+
+# Global config to prevent Gradio JSON schema issues
+DEFAULT_MODEL_CONFIG = ConfigDict(
+    extra="forbid",
+    json_schema_extra={"additionalProperties": False}
+)
 
 
 class CurriculumMarkdown(BaseModel):
     """Curriculum structure with Markdown content."""
+    model_config = DEFAULT_MODEL_CONFIG
+    
     markdown_content: str = Field(description="Complete curriculum in Markdown format")
     course_title: str = Field(description="Title of the course extracted from markdown")
     target_audience: str = Field(description="Intended learners extracted from markdown")
@@ -18,6 +26,8 @@ class CurriculumMarkdown(BaseModel):
 
 class InstructionMarkdown(BaseModel):
     """Instruction materials with Markdown content."""
+    model_config = DEFAULT_MODEL_CONFIG
+    
     markdown_content: str = Field(description="Complete instruction materials in Markdown format")
     lesson_title: str = Field(description="Title of the lesson")
     module_title: str = Field(description="Title of the module")
@@ -25,12 +35,16 @@ class InstructionMarkdown(BaseModel):
 
 class PracticeMarkdown(BaseModel):
     """Practice materials with Markdown content."""
+    model_config = DEFAULT_MODEL_CONFIG
+    
     markdown_content: str = Field(description="Complete practice materials in Markdown format")
     lesson_title: str = Field(description="Title of the lesson")
 
 
 class QualityAssessment(BaseModel):
     """Quality assessment report."""
+    model_config = DEFAULT_MODEL_CONFIG
+    
     markdown_report: str = Field(description="Quality assessment report in Markdown format")
     overall_quality_score: float = Field(description="Overall score from 0-100")
     curriculum_alignment: float = Field(description="How well curriculum aligns with objectives")
@@ -43,6 +57,8 @@ class QualityAssessment(BaseModel):
 
 class CourseCompletion(BaseModel):
     """Final compiled course ready for delivery."""
+    model_config = DEFAULT_MODEL_CONFIG
+    
     course_id: str = Field(description="Unique identifier for the course")
     course_title: str = Field(description="Title of the course")
     full_markdown_content: str = Field(description="Complete course in Markdown format ready for PDF export")
@@ -58,6 +74,8 @@ class CourseCompletion(BaseModel):
 # Legacy models kept for backward compatibility but deprecated
 class LearningObjective(BaseModel):
     """Individual learning objective for a lesson."""
+    model_config = DEFAULT_MODEL_CONFIG
+    
     objective_id: str = Field(description="Unique identifier for the objective")
     title: str = Field(description="Short title of the learning objective")
     description: str = Field(description="Detailed description of what students should learn")
@@ -67,6 +85,8 @@ class LearningObjective(BaseModel):
 
 class Lesson(BaseModel):
     """Individual lesson within a module."""
+    model_config = DEFAULT_MODEL_CONFIG
+    
     lesson_id: str = Field(description="Unique identifier for the lesson")
     title: str = Field(description="Title of the lesson")
     duration_minutes: int = Field(description="Expected duration in minutes")
@@ -76,6 +96,8 @@ class Lesson(BaseModel):
 
 class Module(BaseModel):
     """A module containing multiple lessons."""
+    model_config = DEFAULT_MODEL_CONFIG
+    
     module_id: str = Field(description="Unique identifier for the module")
     title: str = Field(description="Title of the module")
     description: str = Field(description="Overview of the module")
@@ -86,6 +108,8 @@ class Module(BaseModel):
 
 class Curriculum(BaseModel):
     """Complete curriculum structure designed by the Curriculum Designer Agent."""
+    model_config = DEFAULT_MODEL_CONFIG
+    
     course_title: str = Field(description="Title of the course")
     course_description: str = Field(description="Comprehensive course description")
     target_audience: str = Field(description="Intended learners for this course")
@@ -98,18 +122,20 @@ class Curriculum(BaseModel):
 
 class InstructionSection(BaseModel):
     """Individual instruction section for a lesson."""
+    model_config = DEFAULT_MODEL_CONFIG
+    
     section_id: str = Field(description="Unique identifier for the section")
     title: str = Field(description="Title of the instruction section")
     content: str = Field(description="Detailed instructional content in markdown format")
     teaching_tips: List[str] = Field(default_factory=list, description="Practical tips for instructors")
     estimated_time: int = Field(description="Time to teach this section in minutes")
     resources: List[str] = Field(default_factory=list, description="External resources or references")
-    
-    model_config = {"extra": "forbid", "json_schema_extra": {"additionalProperties": False}}
 
 
 class Instruction(BaseModel):
     """Detailed instruction materials created by the Instruction Designer Agent."""
+    model_config = DEFAULT_MODEL_CONFIG
+    
     lesson_id: str = Field(description="ID of the lesson this instruction is for")
     lesson_title: str = Field(description="Title of the lesson")
     module_id: str = Field(description="ID of the module containing this lesson")
@@ -123,6 +149,8 @@ class Instruction(BaseModel):
 
 class PracticeExercise(BaseModel):
     """Individual practice exercise or assignment."""
+    model_config = DEFAULT_MODEL_CONFIG
+    
     exercise_id: str = Field(description="Unique identifier for the exercise")
     title: str = Field(description="Title of the exercise")
     type: str = Field(description="Type: multiple-choice, essay, coding, problem-solving, etc.")
@@ -131,12 +159,12 @@ class PracticeExercise(BaseModel):
     estimated_time: int = Field(description="Time to complete in minutes")
     learning_objectives: List[str] = Field(default_factory=list, description="Which objectives this exercise addresses")
     solution_rubric: Optional[str] = Field(default=None, description="Grading rubric or solution outline")
-    
-    model_config = {"extra": "forbid", "json_schema_extra": {"additionalProperties": False}}
 
 
 class Assessment(BaseModel):
     """Assessment or quiz for evaluating student understanding."""
+    model_config = DEFAULT_MODEL_CONFIG
+    
     assessment_id: str = Field(description="Unique identifier for the assessment")
     title: str = Field(description="Title of the assessment")
     assessment_type: str = Field(description="Type: quiz, test, project, presentation, etc.")
@@ -144,12 +172,12 @@ class Assessment(BaseModel):
     total_points: int = Field(description="Total points possible")
     passing_score: int = Field(description="Minimum points to pass")
     questions_count: int = Field(description="Number of questions or items")
-    
-    model_config = {"extra": "forbid", "json_schema_extra": {"additionalProperties": False}}
 
 
 class Practice(BaseModel):
     """Practice exercises and assessments designed by the Practice Designer Agent."""
+    model_config = DEFAULT_MODEL_CONFIG
+    
     lesson_id: str = Field(description="ID of the lesson this practice is for")
     lesson_title: str = Field(description="Title of the lesson")
     module_id: str = Field(description="ID of the module")
@@ -164,6 +192,8 @@ class Practice(BaseModel):
 
 class QualityIssue(BaseModel):
     """A quality issue identified during QA review."""
+    model_config = DEFAULT_MODEL_CONFIG
+    
     category: str = Field(description="Category: alignment, completeness, accuracy, clarity, etc.")
     severity: str = Field(description="Severity level: critical, major, minor")
     description: str = Field(description="Description of the issue")
@@ -173,6 +203,8 @@ class QualityIssue(BaseModel):
 
 class QualityAssurance(BaseModel):
     """Quality assurance report produced by the QA Agent."""
+    model_config = DEFAULT_MODEL_CONFIG
+    
     overall_quality_score: float = Field(description="Overall score from 0-100")
     curriculum_alignment: float = Field(description="How well curriculum aligns with objectives")
     completeness_score: float = Field(description="How complete the course materials are")

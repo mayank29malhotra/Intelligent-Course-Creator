@@ -23,9 +23,10 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 from coordinator_agent import CourseCreationCoordinator
-from models import CourseCompletion
 from tools.docx_exporter import export_markdown_to_docx
 from datetime import datetime
+
+# Note: We import models only within functions to avoid Gradio schema parsing issues
 
 
 class CourseCreatorApp:
