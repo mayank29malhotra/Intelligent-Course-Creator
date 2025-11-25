@@ -14,6 +14,29 @@ Environment Variables:
 
 import asyncio 
 import gradio as gr
+"""Monkeypatch Gradio API info generation to avoid Pydantic schema traversal.
+On Hugging Face Spaces the automatic call to api_info() triggers
+json schema introspection that is failing with a TypeError inside
+gradio_client.utils._json_schema_to_python_type when encountering
+`additionalProperties` as a raw boolean. We don't need the auto
+generated API spec for this app, so we override the functions that
+collect it to return empty dicts, preventing the problematic code path.
+"""
+try:
+    import gradio.routes as _gr_routes
+    import gradio.blocks as _gr_blocks
+
+    def _safe_api_info(include_dependencies: bool = False):  # signature compatibility
+        return {}
+
+    def _safe_get_api_info(self):  # method for Blocks
+        return {}
+
+    _gr_routes.api_info = _safe_api_info  # override top-level helper
+    _gr_blocks.Blocks.get_api_info = _safe_get_api_info  # override method used inside api_info
+except Exception:
+    # If monkeypatch fails, continue; original error handling will surface.
+    pass
 import json
 import os
 from pathlib import Path
