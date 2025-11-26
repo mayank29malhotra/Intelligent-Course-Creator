@@ -800,19 +800,13 @@ def main():
         print(f"   - Share: {share}")
         print("\n" + "="*70 + "\n")
         
-        # Monkeypatch API info to bypass schema introspection bug (bool additionalProperties)
-        try:
-            interface.get_api_info = lambda : {}
-        except Exception:
-            pass
-
         # Launch Gradio interface
         interface.launch(
             share=share,
             server_name=server_name,
             server_port=server_port,
             show_error=True,
-            show_api=False  # Disable API to prevent Pydantic schema parsing issues on HF Spaces
+            show_api=True  # Enable API so the frontend can wire events
         )
     
     except KeyboardInterrupt:
