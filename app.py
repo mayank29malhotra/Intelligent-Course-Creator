@@ -689,9 +689,9 @@ class SimpleCourseCreatorApp:
                 create_btn = gr.Button("🚀 Create Course", variant="primary", size="lg")
                 clear_btn = gr.Button("🔄 Clear All", size="lg")
             
-            # Hidden state variables (basic types only!)
-            markdown_state = gr.State(value="")
-            course_title_state = gr.State(value="")
+            # Hidden storage without using gr.State (avoids schema issues)
+            markdown_hidden = gr.Textbox(visible=False)
+            course_title_hidden = gr.Textbox(visible=False)
             
             # Export section
             with gr.Group():
@@ -718,7 +718,7 @@ class SimpleCourseCreatorApp:
             create_btn.click(
                 fn=create_course_handler,
                 inputs=[topic_input, audience_input, hours_input, quality_input],
-                outputs=[status_output, markdown_state, course_title_state, docx_btn],
+                outputs=[status_output, markdown_hidden, course_title_hidden, docx_btn],
                 show_progress=True
             )
             
@@ -732,7 +732,7 @@ class SimpleCourseCreatorApp:
             
             docx_btn.click(
                 fn=export_handler,
-                inputs=[markdown_state, course_title_state],
+                inputs=[markdown_hidden, course_title_hidden],
                 outputs=[export_status, docx_download, docx_download]
             )
             
@@ -743,7 +743,7 @@ class SimpleCourseCreatorApp:
             clear_btn.click(
                 fn=clear_handler,
                 outputs=[topic_input, audience_input, hours_input, quality_input,
-                        status_output, markdown_state, course_title_state, 
+                        status_output, markdown_hidden, course_title_hidden, 
                         export_status, docx_download, docx_btn]
             )
         
@@ -771,7 +771,8 @@ def main():
         is_huggingface_space = os.getenv("SPACE_ID") is not None
         
         if is_huggingface_space:
-            share = True
+            # Do NOT set share=True on HF Spaces (not supported)
+            share = False
             server_name = "0.0.0.0"
             server_port = 7860
             print("🤗 Running in Hugging Face Space environment")
