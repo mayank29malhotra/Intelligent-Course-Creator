@@ -320,9 +320,10 @@ def main():
     """Main entry point."""
     
     print("\n" + "="*70)
-    print("🎓 Intelligent Course Creator")
+    print("🎓 Intelligent Course Creator [APP_SIMPLE.PY v2.0.0]")
     print("="*70)
     print("Starting Gradio interface for Hugging Face Spaces...")
+    print("🔧 show_api=False (API disabled to prevent schema bug)")
     print("="*70 + "\n")
     
     try:
@@ -356,7 +357,7 @@ def main():
             server_name=server_name,
             server_port=server_port,
             show_error=True,
-            show_api=True  # Enable API but Gradio won't parse complex schemas
+            show_api=False  # CRITICAL: Disable API to prevent Pydantic schema parsing TypeError on HF Spaces
         )
     
     except KeyboardInterrupt:

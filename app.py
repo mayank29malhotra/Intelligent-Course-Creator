@@ -795,9 +795,10 @@ def main():
     """Main entry point."""
     
     print("\n" + "="*70)
-    print("🎓 Intelligent Course Creator")
+    print("🎓 Intelligent Course Creator [APP.PY v2.0.0]")
     print("="*70)
     print("Starting Gradio interface for Hugging Face Spaces...")
+    print("🔧 show_api=False (API disabled to prevent schema bug)")
     print("="*70 + "\n")
     
     try:
