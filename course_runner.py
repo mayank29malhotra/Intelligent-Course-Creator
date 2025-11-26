@@ -32,32 +32,26 @@ async def create_course_isolated(
         dict with keys: success, course_title, markdown_content, error
     """
     try:
-        # Initialize coordinator
+        # Initialize coordinator (no stdout noise)
         coordinator = CourseCreationCoordinator(
             quality_threshold=quality_threshold,
             max_iterations=max_iterations
         )
-        
-        print(f"✅ Coordinator initialized (threshold: {quality_threshold}%)")
-        
-        # Create course
+
+        # Create course (suppress internal verbose prints by forcing verbose=False here)
         course = await coordinator.create_course(
             course_topic=course_topic,
             target_audience=target_audience,
             duration_hours=int(duration_hours),
-            verbose=True
+            verbose=False
         )
-        
-        # Convert Pydantic model to plain dict
-        result = {
+
+        return {
             "success": True,
             "course_title": str(course.course_title),
             "markdown_content": str(course.full_markdown_content),
             "error": None
         }
-        
-        return result
-        
     except Exception as e:
         return {
             "success": False,
@@ -70,7 +64,7 @@ async def create_course_isolated(
 def main():
     """CLI entry point for subprocess execution."""
     if len(sys.argv) != 6:
-        print("Usage: course_runner.py <topic> <audience> <hours> <quality> <max_iterations>")
+        print("Usage: course_runner.py <topic> <audience> <hours> <quality> <max_iterations>", file=sys.stderr)
         sys.exit(1)
     
     topic = sys.argv[1]
@@ -88,8 +82,9 @@ def main():
         max_iterations=max_iter
     ))
     
-    # Output result as JSON
-    print(json.dumps(result, ensure_ascii=False, indent=2))
+    # Output pure JSON to stdout (no other prints!)
+    sys.stdout.write(json.dumps(result, ensure_ascii=False))
+    sys.stdout.flush()
 
 
 if __name__ == "__main__":

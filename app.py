@@ -540,7 +540,7 @@ class SimpleCourseCreatorApp:
         try:
             progress(0.1, desc="Starting course creation...")
             
-            # Prepare subprocess command
+            # Prepare subprocess command (expects pure JSON stdout)
             script_path = os.path.join(os.path.dirname(__file__), "course_runner.py")
             cmd = [
                 sys.executable,  # Python executable
@@ -566,20 +566,33 @@ class SimpleCourseCreatorApp:
             progress(0.9, desc="Processing results...")
             
             if result.returncode != 0:
-                error_msg = f"Course generation failed: {result.stderr}"
+                stderr_tail = result.stderr.strip().splitlines()[-1:] if result.stderr else []
+                error_msg = "Course generation failed" + (f": {stderr_tail[0]}" if stderr_tail else ".")
                 print(f"❌ {error_msg}")
                 return error_msg, "", ""
             
             # Parse JSON result
+            raw_out = result.stdout.strip()
             try:
-                course_data = json.loads(result.stdout)
-            except json.JSONDecodeError as e:
-                error_msg = f"Failed to parse course data: {str(e)}"
-                print(f"❌ {error_msg}")
-                return error_msg, "", ""
+                course_data = json.loads(raw_out)
+            except json.JSONDecodeError:
+                # Attempt recovery: extract last JSON object
+                last_brace = raw_out.rfind('{')
+                if last_brace != -1:
+                    try:
+                        course_data = json.loads(raw_out[last_brace:])
+                    except Exception as e:
+                        error_msg = f"Failed to parse course data: {e}"
+                        print(f"❌ {error_msg}")
+                        return error_msg, "", ""
+                else:
+                    error_msg = "Failed to parse course data: No JSON found"
+                    print(f"❌ {error_msg}")
+                    return error_msg, "", ""
             
             if not course_data.get("success"):
-                error_msg = f"Course generation failed: {course_data.get('error', 'Unknown error')}"
+                error_detail = course_data.get('error', 'Unknown error')
+                error_msg = f"Course generation failed: {error_detail}"
                 print(f"❌ {error_msg}")
                 return error_msg, "", ""
             
