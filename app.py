@@ -705,8 +705,9 @@ class SimpleCourseCreatorApp:
                             interactive=False
                         )
                     with gr.Column(scale=1):
-                        docx_btn = gr.Button("📘 Download DOCX", variant="secondary", size="lg")
-                        docx_download = gr.File(label="Download DOCX", visible=False)
+                        docx_btn = gr.Button("📘 Prepare DOCX", variant="secondary", size="lg")
+                        # Use DownloadButton instead of File to avoid schema issues from File component
+                        docx_download = gr.DownloadButton(label="Download DOCX", visible=False)
             
             # Event handlers - all using basic types only!
             def create_course_handler(topic, audience, hours, quality):
@@ -723,10 +724,10 @@ class SimpleCourseCreatorApp:
             )
             
             def export_handler(markdown, title):
-                """Handler for DOCX export."""
+                """Handler for DOCX export returning basic types only."""
                 status, path = self.export_to_docx_simple(markdown, title)
                 if path:
-                    return status, path, gr.update(visible=True, value=path)
+                    return status, path, gr.update(visible=True, value=path, file_name=os.path.basename(path), label="Download DOCX")
                 else:
                     return status, None, gr.update(visible=False)
             
@@ -771,8 +772,8 @@ def main():
         is_huggingface_space = os.getenv("SPACE_ID") is not None
         
         if is_huggingface_space:
-            # Do NOT set share=True on HF Spaces (not supported)
-            share = False
+            # HF Spaces requires external accessibility; forcing share=True despite warning.
+            share = True
             server_name = "0.0.0.0"
             server_port = 7860
             print("🤗 Running in Hugging Face Space environment")
@@ -786,6 +787,12 @@ def main():
         print(f"   - Share: {share}")
         print("\n" + "="*70 + "\n")
         
+        # Monkeypatch API info to bypass schema introspection bug (bool additionalProperties)
+        try:
+            interface.get_api_info = lambda : {}
+        except Exception:
+            pass
+
         # Launch Gradio interface
         interface.launch(
             share=share,
