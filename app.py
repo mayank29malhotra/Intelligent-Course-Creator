@@ -831,7 +831,7 @@ def main():
             server_name=server_name,
             server_port=server_port,
             show_error=True,
-            show_api=True  # Enable API but Gradio won't parse complex schemas
+            show_api=False  # Disable API to prevent Pydantic schema parsing issues on HF Spaces
         )
     
     except KeyboardInterrupt:
