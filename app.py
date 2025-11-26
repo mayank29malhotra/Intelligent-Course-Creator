@@ -769,7 +769,7 @@ def main():
     print("\n" + "="*70)
     print("🎓 Intelligent Course Creator [APP.PY v2.0.0]")
     print("="*70)
-    print("Starting Gradio interface for Hugging Face Spaces...")
+    print("Starting Gradio interface...")
     print("🔧 show_api=False + queue enabled (prevents schema bug)")
     print("="*70 + "\n")
     
@@ -780,16 +780,18 @@ def main():
         # Create interface
         interface = app.create_interface()
         
-        # Get configuration
-        is_huggingface_space = os.getenv("SPACE_ID") is not None
+        # Get configuration (Render, Railway, or local)
+        is_render = os.getenv("RENDER") is not None
+        is_railway = os.getenv("RAILWAY_ENVIRONMENT") is not None
         
-        if is_huggingface_space:
-            # HF Spaces requires external accessibility; forcing share=True despite warning.
-            share = True
+        if is_render or is_railway:
+            # Render/Railway: bind to 0.0.0.0 but no share needed
+            share = False
             server_name = "0.0.0.0"
-            server_port = 7860
-            print("🤗 Running in Hugging Face Space environment")
+            server_port = int(os.getenv("PORT", "7860"))
+            print(f"🚀 Running on {'Render' if is_render else 'Railway'} environment")
         else:
+            # Local development
             share = os.getenv("GRADIO_SHARE", "False").lower() == "true"
             server_name = os.getenv("GRADIO_SERVER_NAME", "127.0.0.1")
             server_port = int(os.getenv("GRADIO_SERVER_PORT", "7860"))

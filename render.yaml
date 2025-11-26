@@ -1,0 +1,18 @@
+# Render deployment configuration
+# https://render.com/docs/web-services
+
+services:
+  - type: web
+    name: intelligent-course-creator
+    runtime: docker
+    plan: free
+    region: oregon
+    env:
+      - key: GEMINI_API_KEY
+        sync: false  # Set this in Render dashboard
+      - key: QUALITY_THRESHOLD
+        value: "75.0"
+      - key: MAX_ITERATIONS
+        value: "3"
+    healthCheckPath: /
+    autoDeploy: true

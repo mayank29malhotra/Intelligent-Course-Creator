@@ -1,0 +1,60 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Git
+.git/
+.gitignore
+.github/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+
+# Outputs
+outputs/
+*.md
+*.docx
+*.pdf
+
+# Documentation (keep essential ones)
+!README.md
+!DEPLOY_RENDER.md
+
+# HuggingFace specific (not needed for Render/Railway)
+.huggingface/
+PUSH_AND_DEPLOY.md
+DEPLOY_NOW.md
+CRITICAL_FIX_README.md
+ULTIMATE_FIX.md
+
+# Backups
+*_backup.py
+*_old.py
