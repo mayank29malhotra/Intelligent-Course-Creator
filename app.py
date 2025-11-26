@@ -479,8 +479,9 @@ No complex Pydantic models exposed to Gradio - only basic types (str, int, float
 """
 
 import gradio as gr
-import asyncio
+import subprocess
 import json
+import sys
 import os
 from pathlib import Path
 from datetime import datetime
@@ -488,31 +489,20 @@ from dotenv import load_dotenv
 
 load_dotenv(override=True)
 
-from coordinator_agent import CourseCreationCoordinator
 from tools.docx_exporter import export_markdown_to_docx
 
 
 class SimpleCourseCreatorApp:
-    """Simplified app that exposes only basic types to Gradio."""
+    """Simplified app that exposes only basic types to Gradio.
+    
+    Uses subprocess to completely isolate Pydantic models from Gradio's introspection.
+    """
     
     def __init__(self):
-        self.coordinator = None
-        self._initialize_coordinator()
+        self.quality_threshold = float(os.getenv("QUALITY_THRESHOLD", "75.0"))
+        self.max_iterations = int(os.getenv("MAX_ITERATIONS", "3"))
+        print("✅ App initialized (using subprocess isolation)")
     
-    def _initialize_coordinator(self):
-        """Initialize the coordinator."""
-        try:
-            quality_threshold = float(os.getenv("QUALITY_THRESHOLD", "75.0"))
-            max_iterations = int(os.getenv("MAX_ITERATIONS", "3"))
-            
-            self.coordinator = CourseCreationCoordinator(
-                quality_threshold=quality_threshold,
-                max_iterations=max_iterations
-            )
-            print("✅ Coordinator initialized successfully")
-        except Exception as e:
-            print(f"❌ Failed to initialize coordinator: {str(e)}")
-            raise
     
     def create_course_sync(
         self,
@@ -522,7 +512,7 @@ class SimpleCourseCreatorApp:
         quality_threshold: float,
         progress=gr.Progress()
     ):
-        """Synchronous wrapper for async course creation.
+        """Synchronous wrapper for course creation using subprocess isolation.
         
         Returns: tuple of (status_message: str, markdown_content: str, course_title: str)
         All return types are basic Python types - no Pydantic models!
@@ -547,103 +537,72 @@ class SimpleCourseCreatorApp:
         except (ValueError, TypeError):
             return "❌ Error: Quality threshold must be a valid number", "", ""
         
-        # Run async function in sync context
         try:
-            # Update quality threshold
-            self.coordinator.quality_threshold = quality_threshold
+            progress(0.1, desc="Starting course creation...")
             
-            # Initial progress
-            progress(0.0, desc="🚀 Initializing course creation...")
+            # Prepare subprocess command
+            script_path = os.path.join(os.path.dirname(__file__), "course_runner.py")
+            cmd = [
+                sys.executable,  # Python executable
+                script_path,
+                topic,
+                audience,
+                str(int(hours)),
+                str(quality_threshold),
+                str(self.max_iterations)
+            ]
             
-            def stage_progress_callback(fraction: float, desc: str = ""):
-                if fraction <= 0.1:
-                    progress(0.1, desc="📚 [1/4] Curriculum Designer – Creating course structure...")
-                elif fraction <= 0.4:
-                    progress(0.35, desc="✍️ [2/4] Instruction Designer – Writing teaching materials...")
-                elif fraction <= 0.7:
-                    progress(0.6, desc="💪 [3/4] Practice Designer – Building exercises & assessments...")
-                elif fraction < 1.0:
-                    progress(0.85, desc="✅ [4/4] QA Agent – Checking quality & consistency...")
-                else:
-                    progress(1.0, desc="🎉 Course ready! You can now export the DOCX.")
+            progress(0.2, desc="Launching isolated course generator...")
             
-            # Create new event loop for this thread
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+            # Run subprocess with timeout
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                timeout=1800,  # 30 minutes timeout
+                cwd=os.path.dirname(__file__)
+            )
             
+            progress(0.9, desc="Processing results...")
+            
+            if result.returncode != 0:
+                error_msg = f"Course generation failed: {result.stderr}"
+                print(f"❌ {error_msg}")
+                return error_msg, "", ""
+            
+            # Parse JSON result
             try:
-                # Run async course creation
-                course = loop.run_until_complete(
-                    self.coordinator.create_course(
-                        course_topic=topic,
-                        target_audience=audience,
-                        duration_hours=hours,
-                        verbose=True,
-                        progress_callback=stage_progress_callback
-                    )
-                )
-            finally:
-                loop.close()
+                course_data = json.loads(result.stdout)
+            except json.JSONDecodeError as e:
+                error_msg = f"Failed to parse course data: {str(e)}"
+                print(f"❌ {error_msg}")
+                return error_msg, "", ""
             
-            # Extract data from Pydantic model and convert to basic types
-            course_title = str(course.course_title)
-            markdown_content = str(course.full_markdown_content)
-            quality_score = float(course.quality_assessment.overall_quality_score)
-            total_iterations = int(course.total_iterations)
-            course_id = str(course.course_id)
+            if not course_data.get("success"):
+                error_msg = f"Course generation failed: {course_data.get('error', 'Unknown error')}"
+                print(f"❌ {error_msg}")
+                return error_msg, "", ""
             
-            # Create summary message
-            summary = f"""
-✅ **Course Created Successfully!**
-
-📋 **Course Overview:**
-- **Title:** {course_title}
-- **Course ID:** {course_id}
-
-📊 **Quality Assessment:**
-- **Overall Score:** {quality_score:.1f}% (Threshold: {quality_threshold:.0f}%)
-- **Curriculum Alignment:** {course.quality_assessment.curriculum_alignment:.1f}%
-- **Completeness:** {course.quality_assessment.completeness_score:.1f}%
-- **Accuracy:** {course.quality_assessment.accuracy_score:.1f}%
-- **Clarity:** {course.quality_assessment.clarity_score:.1f}%
-
-🔄 **Generation Stats:**
-- **Iterations:** {total_iterations}
-- **Status:** {'✅ PASSED' if course.quality_assessment.passes_quality_threshold else '⚠️ COMPLETED'}
-
----
-
-📚 **Course Structure:**
-✓ Complete curriculum with modules and lessons
-✓ Detailed instruction materials  
-✓ Practice exercises and assessments
-✓ Quality assurance validation
-
-**All content is ready for DOCX export!**
-            """
+            # Extract results
+            course_title = course_data.get("course_title", "Untitled Course")
+            markdown_content = course_data.get("markdown_content", "")
             
-            progress(1.0, desc="🎉 Course generation complete!")
+            progress(1.0, desc="Course completed!")
             
-            # Return only basic types: (str, str, str)
-            return summary, markdown_content, course_title
-        
-        except Exception as e:
-            error_msg = f"""
-❌ **Error Creating Course:**
-
-**Error Details:**
-```
-{type(e).__name__}: {str(e)}
-```
-
-**Troubleshooting:**
-1. Verify all required fields are filled
-2. Check API key is valid
-3. Try a simpler course topic
-4. Reduce course duration
-            """
+            success_msg = f"✅ Course '{course_title}' created successfully! ({len(markdown_content)} characters)"
+            print(success_msg)
+            
+            return success_msg, markdown_content, course_title
+            
+        except subprocess.TimeoutExpired:
+            error_msg = "❌ Course generation timed out (30 minutes). Please try a shorter course or simpler topic."
+            print(error_msg)
             return error_msg, "", ""
-    
+        except Exception as e:
+            error_msg = f"❌ Unexpected error: {str(e)}"
+            print(error_msg)
+            return error_msg, "", ""
+
     def export_to_docx_simple(self, markdown_content: str, course_title: str):
         """Export markdown to DOCX.
         
