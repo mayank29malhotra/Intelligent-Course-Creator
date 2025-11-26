@@ -718,9 +718,8 @@ class SimpleCourseCreatorApp:
                             interactive=False
                         )
                     with gr.Column(scale=1):
-                        docx_btn = gr.Button("📘 Prepare DOCX", variant="secondary", size="lg")
-                        # Use DownloadButton instead of File to avoid schema issues from File component
-                        docx_download = gr.DownloadButton(label="Download DOCX", visible=False)
+                        docx_btn = gr.Button("📘 Export to DOCX", variant="secondary", size="lg")
+                        docx_download = gr.File(label="Download DOCX", visible=False, file_count="single", type="filepath")
             
             # Event handlers - all using basic types only!
             def create_course_handler(topic, audience, hours, quality):
@@ -740,7 +739,7 @@ class SimpleCourseCreatorApp:
                 """Handler for DOCX export returning basic types only."""
                 status, path = self.export_to_docx_simple(markdown, title)
                 if path:
-                    return status, path, gr.update(visible=True, value=path, file_name=os.path.basename(path), label="Download DOCX")
+                    return status, path, gr.update(visible=True)
                 else:
                     return status, None, gr.update(visible=False)
             
@@ -771,7 +770,7 @@ def main():
     print("🎓 Intelligent Course Creator [APP.PY v2.0.0]")
     print("="*70)
     print("Starting Gradio interface for Hugging Face Spaces...")
-    print("🔧 show_api=False (API disabled to prevent schema bug)")
+    print("🔧 show_api=False + queue enabled (prevents schema bug)")
     print("="*70 + "\n")
     
     try:
@@ -800,13 +799,15 @@ def main():
         print(f"   - Share: {share}")
         print("\n" + "="*70 + "\n")
         
-        # Launch Gradio interface
+        # Launch Gradio interface with queue enabled for proper event handling
+        interface.queue()  # Enable queue so events work even with show_api=False
         interface.launch(
             share=share,
             server_name=server_name,
             server_port=server_port,
             show_error=True,
-            show_api=True  # Enable API so the frontend can wire events
+            show_api=False,  # CRITICAL: Keep disabled to prevent bool additionalProperties schema crash
+            quiet=False
         )
     
     except KeyboardInterrupt:
