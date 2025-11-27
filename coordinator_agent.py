@@ -14,7 +14,6 @@ import uuid
 
 from models import CourseCompletion, QualityAssessment
 from tools import design_curriculum, design_instruction, design_practice, assess_quality
-from tools.pdf_exporter import export_markdown_to_pdf
 from tools.course_tools import extract_curriculum_metadata
 from config import gemini_config
 
