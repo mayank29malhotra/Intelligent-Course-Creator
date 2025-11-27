@@ -439,9 +439,13 @@ def main():
         
         # Get configuration
         share = os.getenv("GRADIO_SHARE", "False").lower() == "true"
-        # Use 0.0.0.0 for Render deployment, PORT env var takes precedence
-        server_name = os.getenv("GRADIO_SERVER_NAME", "0.0.0.0")
+        # Resolve server port and name with Render-friendly defaults
         server_port = int(os.getenv("PORT", os.getenv("GRADIO_SERVER_PORT", "7860")))
+        # If running on Render (PORT is set), force binding to 0.0.0.0 regardless of GRADIO_SERVER_NAME
+        if os.getenv("PORT"):
+            server_name = "0.0.0.0"
+        else:
+            server_name = os.getenv("GRADIO_SERVER_NAME", "0.0.0.0")
         
         # Debug logging for deployment troubleshooting
         print(f"🔍 Environment variable debug:")
