@@ -22,7 +22,9 @@ from dotenv import load_dotenv
 
 # Load environment variables from .env file (but don't override system env vars)
 # This allows Render's PORT and other env vars to take precedence
-load_dotenv(override=False)
+# Only load .env if not in production/container environment
+if not os.getenv("PORT"):  # If PORT is set, we're likely in production
+    load_dotenv(override=False)
 
 from coordinator_agent import CourseCreationCoordinator
 from models import CourseCompletion
@@ -440,6 +442,12 @@ def main():
         # Use 0.0.0.0 for Render deployment, PORT env var takes precedence
         server_name = os.getenv("GRADIO_SERVER_NAME", "0.0.0.0")
         server_port = int(os.getenv("PORT", os.getenv("GRADIO_SERVER_PORT", "7860")))
+        
+        # Debug logging for deployment troubleshooting
+        print(f"🔍 Environment variable debug:")
+        print(f"   PORT: {os.getenv('PORT', 'NOT SET')}")
+        print(f"   GRADIO_SERVER_NAME: {os.getenv('GRADIO_SERVER_NAME', 'NOT SET')}")
+        print(f"   GRADIO_SERVER_PORT: {os.getenv('GRADIO_SERVER_PORT', 'NOT SET')}")
         
         print(f"✅ Server configuration:")
         print(f"   - Address: {server_name}:{server_port}")
