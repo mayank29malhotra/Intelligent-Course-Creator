@@ -60,8 +60,16 @@ def extract_lessons_from_curriculum(markdown: str) -> list:
     return lessons
 
 
-def extract_qa_scores(markdown: str) -> QualityAssessment:
-    """Extract QA scores from markdown report with YAML front matter."""
+def extract_qa_scores(markdown: str, quality_threshold: float = 75.0) -> QualityAssessment:
+    """Extract QA scores from markdown report with YAML front matter.
+    
+    Args:
+        markdown: The markdown report with YAML front matter
+        quality_threshold: Minimum quality score required (0-100)
+    
+    Returns:
+        QualityAssessment with scores extracted from markdown
+    """
     # Default values
     scores = {
         "overall_quality_score": 75.0,
@@ -69,7 +77,6 @@ def extract_qa_scores(markdown: str) -> QualityAssessment:
         "completeness_score": 75.0,
         "accuracy_score": 75.0,
         "clarity_score": 75.0,
-        "passes_quality_threshold": True,
         "recommendations": []
     }
     
@@ -92,8 +99,10 @@ def extract_qa_scores(markdown: str) -> QualityAssessment:
                         scores[key] = float(value)
                     except:
                         pass
-                elif key == 'passes_quality_threshold':
-                    scores[key] = value.lower() == 'true'
+                # Ignore 'passes_quality_threshold' from YAML - we calculate it ourselves
+    
+    # Calculate passes_quality_threshold based on actual threshold from UI
+    passes_threshold = scores['overall_quality_score'] >= quality_threshold
     
     # Extract recommendations
     rec_section = re.search(r'##\s+Recommendations\s*\n(.*?)(?=\n##|\Z)', markdown, re.DOTALL | re.IGNORECASE)
@@ -105,6 +114,7 @@ def extract_qa_scores(markdown: str) -> QualityAssessment:
     
     return QualityAssessment(
         markdown_report=markdown,
+        passes_quality_threshold=passes_threshold,
         **scores
     )
 
@@ -294,7 +304,8 @@ Remember to include the YAML front matter with scores at the start of your respo
     qa_markdown = await qa_agent.run(input_prompt)
     
     # Extract scores and create QualityAssessment object
-    qa_assessment = extract_qa_scores(qa_markdown)
+    # Pass the threshold so it can be calculated correctly based on UI value
+    qa_assessment = extract_qa_scores(qa_markdown, quality_threshold=quality_threshold)
     
     print(f"Quality Assessment: {qa_assessment.overall_quality_score:.1f}% (threshold: {quality_threshold}%)")
     print(f"Passes threshold: {qa_assessment.passes_quality_threshold}")
