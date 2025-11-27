@@ -20,8 +20,9 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv(override=True)
+# Load environment variables from .env file (but don't override system env vars)
+# This allows Render's PORT and other env vars to take precedence
+load_dotenv(override=False)
 
 from coordinator_agent import CourseCreationCoordinator
 from models import CourseCompletion
