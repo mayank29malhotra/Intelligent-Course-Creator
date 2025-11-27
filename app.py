@@ -802,13 +802,12 @@ def main():
         print("\n" + "="*70 + "\n")
         
         # Launch Gradio interface with queue enabled for proper event handling
-        interface.queue()  # Enable queue so events work even with show_api=False
+        interface.queue()  # Enable queue so events work properly
         interface.launch(
-            share=share,
+            share=False,
             server_name=server_name,
             server_port=server_port,
             show_error=True,
-            show_api=False,  # CRITICAL: Keep disabled to prevent bool additionalProperties schema crash
             quiet=False
         )
     
