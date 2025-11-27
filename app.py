@@ -436,8 +436,9 @@ def main():
         
         # Get configuration
         share = os.getenv("GRADIO_SHARE", "False").lower() == "true"
-        server_name = os.getenv("GRADIO_SERVER_NAME", "127.0.0.1")
-        server_port = int(os.getenv("GRADIO_SERVER_PORT", "7860"))
+        # Use 0.0.0.0 for Render deployment, PORT env var takes precedence
+        server_name = os.getenv("GRADIO_SERVER_NAME", "0.0.0.0")
+        server_port = int(os.getenv("PORT", os.getenv("GRADIO_SERVER_PORT", "7860")))
         
         print(f"✅ Server configuration:")
         print(f"   - Address: {server_name}:{server_port}")

@@ -10,8 +10,6 @@ services:
     env:
       - key: GEMINI_API_KEY
         sync: false  # Set this in Render dashboard
-      - key: QUALITY_THRESHOLD
-        value: "75.0"
       - key: MAX_ITERATIONS
         value: "3"
     healthCheckPath: /

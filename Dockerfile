@@ -21,12 +21,11 @@ COPY . .
 # Create outputs directory
 RUN mkdir -p /app/outputs
 
-# Expose port
+# Expose port (Render will use PORT env variable)
 EXPOSE 7860
 
 # Set environment variables
 ENV GRADIO_SERVER_NAME="0.0.0.0"
-ENV GRADIO_SERVER_PORT="7860"
 ENV PYTHONUNBUFFERED=1
 
 # Run the app
