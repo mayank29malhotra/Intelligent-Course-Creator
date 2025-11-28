@@ -25,7 +25,7 @@ if not GEMINI_API_KEY:
     )
 
 # Initialize OpenAI client for Gemini
-GEMINI_MODEL = "gemini-2.0-flash-lite"
+GEMINI_MODEL = "gemini-2.5-flash-lite"
 GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 
 def get_gemini_client():

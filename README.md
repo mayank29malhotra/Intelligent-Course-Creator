@@ -305,7 +305,7 @@ python runner.py ... --quality 85.0
 ### Modify Gemini Model Settings
 Edit `config/gemini_config.py`:
 ```python
-GEMINI_MODEL = "gemini-2.0-flash-lite"  # Change model version
+GEMINI_MODEL = "gemini-2.5-flash-lite"  # Change model version
 ```
 
 ### Customize Web Interface
