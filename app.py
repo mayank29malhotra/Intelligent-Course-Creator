@@ -384,11 +384,15 @@ class CourseCreatorApp:
                 docx_btn_update = gr.update(visible=bool(markdown and markdown.strip()))
                 return status, markdown, title, docx_btn_update
             
+            # Concurrency limit per event (new Gradio API)
+            concurrency_limit = int(os.getenv("GRADIO_CONCURRENCY", "2"))
+
             create_btn.click(
                 fn=create_course_wrapper,
                 inputs=[topic_input, audience_input, hours_input, quality_input],
                 outputs=[status_output, markdown_output, course_title_state, docx_btn],
-                show_progress=True
+                show_progress=True,
+                concurrency_limit=concurrency_limit
             )
 
             def export_docx_wrapper(markdown_content, course_title):
@@ -405,7 +409,8 @@ class CourseCreatorApp:
             docx_btn.click(
                 fn=export_docx_wrapper,
                 inputs=[markdown_output, course_title_state],
-                outputs=[export_status, docx_download, docx_download]
+                outputs=[export_status, docx_download, docx_download],
+                concurrency_limit=concurrency_limit
             )
             
             def clear_all():
@@ -437,11 +442,9 @@ def main():
         # Create interface
         interface = app.create_interface()
         
-        # Queue configuration (env-driven)
-        concurrency_count = int(os.getenv("GRADIO_CONCURRENCY", "2"))
+        # Queue configuration (env-driven) using new Gradio API
         queue_max_size = int(os.getenv("GRADIO_QUEUE_MAX", "50"))
-        # Enable Gradio queue to handle concurrent jobs safely
-        interface.queue(concurrency_count=concurrency_count, max_size=queue_max_size)
+        interface.queue(max_size=queue_max_size)
 
         # Get configuration
         share = os.getenv("GRADIO_SHARE", "False").lower() == "true"
@@ -462,18 +465,24 @@ def main():
         print(f"✅ Server configuration:")
         print(f"   - Address: {server_name}:{server_port}")
         print(f"   - Share: {share}")
-        print(f"   - Concurrency: {concurrency_count}")
+        # Concurrency is now controlled per event via concurrency_limit and overall via max_threads
+        concurrency_limit = int(os.getenv("GRADIO_CONCURRENCY", "2"))
+        print(f"   - Concurrency Limit (per event): {concurrency_limit}")
         print(f"   - Queue Max Size: {queue_max_size}")
         print(f"   - Max Iterations: {os.getenv('MAX_ITERATIONS', '3')}")
         print("\n" + "="*70 + "\n")
         
+        # Optional thread pool size for handling concurrent requests (new Gradio API)
+        max_threads = int(os.getenv("GRADIO_MAX_THREADS", "40"))
+
         # Launch Gradio interface
         interface.launch(
             share=share,
             server_name=server_name,
             server_port=server_port,
             show_error=True,
-            show_api=False
+            show_api=False,
+            max_threads=max_threads
         )
     
     except KeyboardInterrupt:
