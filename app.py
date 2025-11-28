@@ -437,6 +437,12 @@ def main():
         # Create interface
         interface = app.create_interface()
         
+        # Queue configuration (env-driven)
+        concurrency_count = int(os.getenv("GRADIO_CONCURRENCY", "2"))
+        queue_max_size = int(os.getenv("GRADIO_QUEUE_MAX", "50"))
+        # Enable Gradio queue to handle concurrent jobs safely
+        interface.queue(concurrency_count=concurrency_count, max_size=queue_max_size)
+
         # Get configuration
         share = os.getenv("GRADIO_SHARE", "False").lower() == "true"
         # Resolve server port and name with Render-friendly defaults
@@ -456,6 +462,8 @@ def main():
         print(f"✅ Server configuration:")
         print(f"   - Address: {server_name}:{server_port}")
         print(f"   - Share: {share}")
+        print(f"   - Concurrency: {concurrency_count}")
+        print(f"   - Queue Max Size: {queue_max_size}")
         print(f"   - Max Iterations: {os.getenv('MAX_ITERATIONS', '3')}")
         print("\n" + "="*70 + "\n")
         
