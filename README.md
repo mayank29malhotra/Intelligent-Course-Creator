@@ -340,54 +340,7 @@ Edit `gradio_interface.py` to modify:
 - Reduce concurrent requests
 - Add delays between API calls
 
-## 🌐 Deployment
 
-### Local Development
-```bash
-python runner.py --web
-```
-
-### Production Deployment
-```bash
-# Configure in .env
-GRADIO_SHARE=True              # Share public link
-GRADIO_SERVER_NAME=0.0.0.0     # Expose on all interfaces
-GRADIO_SERVER_PORT=8000        # Custom port
-```
-
-### Docker Deployment (Optional)
-Create Dockerfile based on project structure and deploy to cloud
-
-## 📚 Related Projects
-
-- **Agent Manager Refactor**: Research pipeline with similar patterns
-- **Code Learning Assistant**: Specialist agents for code education
-- **Customer Care Telegram**: Multi-agent orchestration with state management
-
-## 🤝 Contributing
-
-To improve this system:
-1. Test changes with sample courses
-2. Validate Pydantic model outputs
-3. Run full test suite before committing
-4. Document any new agent capabilities
-
-## 📄 License
-
-This project is part of the OpenAI SDK Agents portfolio, now powered by Google Gemini.
-
-## 📞 Support
-
-For issues or questions:
-1. Check the troubleshooting section
-2. Review agent instructions for clarity
-3. Examine QA reports for specific recommendations
-4. Check Gemini API documentation: https://ai.google.dev/
-
----
-
-**Version**: 2.0.0 (Gemini + Gradio Edition)  
-**Last Updated**: January 2025  
-**Status**: Production Ready  
+ 
 **LLM Provider**: Google Gemini 2.0 Flash lite 
 **UI Framework**: Gradio
